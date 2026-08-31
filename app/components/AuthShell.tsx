@@ -38,7 +38,7 @@ export default function AuthShell({ title, subtitle, children, footer }: Props) 
           </span>
           <span className="leading-tight text-white">
             <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-white/65">
-              External Pharmacy Exam
+              STEM Exam Papers
             </span>
             <span className="block font-serif text-base font-semibold">Past Paper Discussion</span>
           </span>

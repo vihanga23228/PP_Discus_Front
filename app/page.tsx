@@ -129,8 +129,8 @@ export default function Home() {
               </h1>
 
               <p className="mt-6 max-w-xl text-lg leading-8 text-ink-soft">
-                Sit the External Pharmacists&apos; Examination past papers one statement at a time.
-                Commit to True or False, check the question, and read exactly why each answer is
+                Sit the STEM Examination past papers one statement at a time.
+                Commit to True or False(Choose Correct Answer), check the question, and read exactly why each answer is
                 what it is — in English and in Sinhala.
               </p>
 

@@ -50,6 +50,11 @@ function EditDialog({
   const [year, setYear] = useState(() =>
     editing.kind === "paper" && editing.paper?.year ? String(editing.paper.year) : "",
   );
+  const [duration, setDuration] = useState(() =>
+    editing.kind === "paper" && editing.paper?.durationMinutes
+      ? String(editing.paper.durationMinutes)
+      : "",
+  );
   const [moveTo, setMoveTo] = useState(() =>
     editing.kind === "exam" ? String(editing.exam?.subjectId ?? editing.subjectId) : "",
   );
@@ -88,7 +93,12 @@ function EditDialog({
           onSaved(`Exam “${trimmed}” created.`);
         }
       } else {
-        const body = { title: trimmed, description: desc, year: year ? Number(year) : undefined };
+        const body = {
+          title: trimmed,
+          description: desc,
+          year: year ? Number(year) : undefined,
+          durationMinutes: duration ? Number(duration) : undefined,
+        };
         if (isEdit && editing.paper) {
           await api.admin.updatePaper(editing.examId, editing.paper.id, body);
           onSaved(`Paper saved as “${trimmed}”.`);
@@ -149,16 +159,31 @@ function EditDialog({
           </label>
 
           {editing.kind === "paper" && (
-            <label className="block">
-              <span className="text-sm font-semibold text-ink">Year</span>
-              <input
-                value={year}
-                onChange={(e) => setYear(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                inputMode="numeric"
-                placeholder="2021"
-                className="mt-2 w-full rounded-xl border border-rule bg-paper/60 px-4 py-3 text-ink outline-none transition placeholder:text-ink-faint focus:border-teal focus:bg-card focus:ring-4 focus:ring-teal-wash"
-              />
-            </label>
+            <div className="grid grid-cols-2 gap-4">
+              <label className="block">
+                <span className="text-sm font-semibold text-ink">Year</span>
+                <input
+                  value={year}
+                  onChange={(e) => setYear(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                  inputMode="numeric"
+                  placeholder="2021"
+                  className="mt-2 w-full rounded-xl border border-rule bg-paper/60 px-4 py-3 text-ink outline-none transition placeholder:text-ink-faint focus:border-teal focus:bg-card focus:ring-4 focus:ring-teal-wash"
+                />
+              </label>
+              <label className="block">
+                <span className="text-sm font-semibold text-ink">Duration (minutes)</span>
+                <input
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                  inputMode="numeric"
+                  placeholder="120"
+                  className="mt-2 w-full rounded-xl border border-rule bg-paper/60 px-4 py-3 text-ink outline-none transition placeholder:text-ink-faint focus:border-teal focus:bg-card focus:ring-4 focus:ring-teal-wash"
+                />
+                <span className="mt-1.5 block text-xs text-ink-faint">
+                  Blank means the paper is untimed.
+                </span>
+              </label>
+            </div>
           )}
 
           {editing.kind === "exam" && (
@@ -481,6 +506,9 @@ export default function AdminCataloguePage() {
                                 </span>
                                 <span className="block text-xs text-ink-faint">
                                   {paper.questionCount} questions
+                                  {paper.durationMinutes
+                                    ? ` · ${paper.durationMinutes} min`
+                                    : " · untimed"}
                                 </span>
                               </span>
 

@@ -135,7 +135,7 @@ export default function SiteHeader() {
           </span>
           <span className="leading-tight">
             <span className="hidden text-[10px] font-semibold uppercase tracking-[0.16em] text-teal sm:block">
-              External Pharmacy Exam
+              STEM Exam Papers
             </span>
             <span className="block whitespace-nowrap font-serif text-sm font-semibold text-ink sm:text-[15px]">
               Past Paper Discussion

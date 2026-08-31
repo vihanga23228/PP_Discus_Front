@@ -256,13 +256,13 @@ export const api = {
 
     createPaper: (
       examId: number,
-      body: { title: string; description?: string; year?: number },
+      body: { title: string; description?: string; year?: number; durationMinutes?: number },
     ) => request<Paper>(`/api/exams/${examId}/papers`, { method: "POST", body }),
 
     updatePaper: (
       examId: number,
       paperId: number,
-      body: { title: string; description?: string; year?: number },
+      body: { title: string; description?: string; year?: number; durationMinutes?: number },
     ) => request<Paper>(`/api/exams/${examId}/papers/${paperId}`, { method: "PUT", body }),
 
     deletePaper: (examId: number, paperId: number) =>

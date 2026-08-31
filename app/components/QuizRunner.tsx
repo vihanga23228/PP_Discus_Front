@@ -164,6 +164,66 @@ function Figure({ src, alt, className }: { src: string | null; alt: string; clas
   );
 }
 
+function formatClock(totalSeconds: number): string {
+  const s = Math.max(0, Math.round(totalSeconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const mm = String(m).padStart(2, "0");
+  const ss = String(sec).padStart(2, "0");
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+
+/**
+ * A floating countdown fixed to the side of the page. Purely a clock — it never locks
+ * inputs or force-submits. Once it reaches zero it keeps counting, now as overtime, with
+ * a "time's up" notice, until the reader finishes the paper in their own time.
+ */
+function PaperTimer({ durationMinutes }: { durationMinutes: number | null }) {
+  // Fixed once, at mount: the wall-clock moment this sitting's time is up.
+  const [endAt] = useState(() =>
+    durationMinutes ? Date.now() + durationMinutes * 60_000 : null,
+  );
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!endAt) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [endAt]);
+
+  if (!endAt) return null;
+
+  const remainingMs = endAt - now;
+  const isOver = remainingMs <= 0;
+
+  return (
+    <div
+      role="timer"
+      aria-live="off"
+      className={`fixed right-4 top-24 z-40 w-[152px] rounded-xl border px-3.5 py-3 text-center shadow-lift backdrop-blur transition-colors sm:right-6 ${
+        isOver ? "border-verdict-false-ink/40 bg-verdict-false" : "border-rule bg-card/95"
+      }`}
+    >
+      <p
+        className={`text-[10px] font-bold uppercase tracking-[0.12em] ${
+          isOver ? "text-verdict-false-ink" : "text-ink-faint"
+        }`}
+      >
+        {isOver ? "Time's up" : "Time remaining"}
+      </p>
+      <p
+        className={`mt-1 font-serif text-2xl font-bold tabular-nums ${
+          isOver ? "text-verdict-false-ink" : "text-ink"
+        }`}
+      >
+        {isOver ? `+${formatClock(Math.abs(remainingMs) / 1000)}` : formatClock(remainingMs / 1000)}
+      </p>
+      {isOver && <p className="mt-0.5 text-[11px] text-verdict-false-ink/80">carry on at your own pace</p>}
+    </div>
+  );
+}
+
 function VerdictTag({ ok }: { ok: boolean }) {
   return (
     <span
@@ -487,6 +547,11 @@ export default function QuizRunner({ paper, questions }: Props) {
     [ensureAttempt],
   );
 
+  /** Reveals every remaining question at once — an unanswered one just scores zero. */
+  const checkAll = useCallback(() => {
+    questions.forEach((question) => check(question));
+  }, [questions, check]);
+
   // Record the finished attempt once every question has been checked.
   useEffect(() => {
     if (!allChecked || submittedRef.current) return;
@@ -531,6 +596,8 @@ export default function QuizRunner({ paper, questions }: Props) {
 
   return (
     <>
+      <PaperTimer durationMinutes={paper.durationMinutes} />
+
       {/* Progress */}
       <div className="sticky top-16 z-30 -mx-5 border-b border-rule bg-paper/90 px-5 py-3 backdrop-blur">
         <div className="mx-auto max-w-3xl">
@@ -547,9 +614,20 @@ export default function QuizRunner({ paper, questions }: Props) {
               style={{ width: `${progressPct}%` }}
             />
           </div>
-          <div className="mt-1.5 flex items-center justify-between gap-3 text-xs text-ink-soft">
-            <span className="truncate">
-              {checkedQuestions.length} of {questions.length} questions checked
+          <div className="mt-1.5 flex flex-wrap items-center justify-between gap-3 text-xs text-ink-soft">
+            <span className="flex flex-wrap items-center gap-2">
+              <span className="truncate">
+                {checkedQuestions.length} of {questions.length} questions checked
+              </span>
+              {!allChecked && (
+                <button
+                  type="button"
+                  onClick={checkAll}
+                  className="rounded-full border border-teal/40 bg-teal-wash px-2.5 py-1 text-[11px] font-bold text-teal-deep transition hover:bg-teal-wash/70"
+                >
+                  Check all answers
+                </button>
+              )}
             </span>
             <span className="flex flex-none items-center gap-3">
               <LanguageToggle lang={lang} onChange={setLang} />

@@ -44,6 +44,8 @@ export interface Paper {
   title: string;
   description: string | null;
   year: number | null;
+  /** Sitting length in minutes, set by an admin. Null means untimed. */
+  durationMinutes: number | null;
   examId: number;
   examTitle: string;
   subjectId: number | null;
