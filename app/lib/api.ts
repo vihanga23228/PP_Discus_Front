@@ -15,7 +15,10 @@ import type {
   StartQuizResponse,
 } from "./types";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8083";
+// `||` rather than `??` on purpose: a variable that is set but empty (easy to do
+// by accident in a hosting dashboard) must fall back too, otherwise the base URL
+// becomes "" and every call silently turns into a same-origin relative path.
+const BASE_URL = (process.env.NEXT_PUBLIC_API_URL?.trim() || "http://localhost:8083").replace(/\/+$/, "");
 
 export const TOKEN_KEY = "epe.token";
 export const USER_KEY = "epe.user";

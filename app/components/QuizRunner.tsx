@@ -145,7 +145,7 @@ function Explanation({ en, si, lang }: { en: string | null; si: string | null; l
   );
 }
 
-const MEDIA_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8083";
+const MEDIA_BASE = (process.env.NEXT_PUBLIC_API_URL?.trim() || "http://localhost:8083").replace(/\/+$/, "");
 
 /** Figures are served by the API, so relative paths need its origin prefixed. */
 function Figure({ src, alt, className }: { src: string | null; alt: string; className?: string }) {

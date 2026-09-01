@@ -6,7 +6,7 @@ import { ApiError, api } from "../../lib/api";
 import type { DraftQuestion, Exam, ExtractionJob, ImportPaperResult, Subject } from "../../lib/types";
 
 const NEW = "__new__";
-const MEDIA_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8083";
+const MEDIA_BASE = (process.env.NEXT_PUBLIC_API_URL?.trim() || "http://localhost:8083").replace(/\/+$/, "");
 
 function mediaUrl(path: string | null | undefined): string | null {
   if (!path) return null;
