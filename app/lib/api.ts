@@ -49,6 +49,46 @@ interface RequestOptions {
   signal?: AbortSignal;
 }
 
+/** True when the API is somewhere other than this developer's own machine. */
+export const IS_REMOTE_API = !/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])/i.test(BASE_URL);
+
+/**
+ * Long enough to outlast a cold start on a sleeping free-tier host — those take
+ * around two minutes, because the whole container boots before the first byte.
+ * Without a ceiling the request just hangs until the browser gives up on its
+ * own, which on mobile can be far sooner and with no useful error.
+ */
+const REQUEST_TIMEOUT_MS = 150_000;
+
+/**
+ * fetch with a deadline. Written with an AbortController rather than
+ * AbortSignal.any + AbortSignal.timeout, which only reached Safari in 17.4 —
+ * too new to rely on for the phones this is mostly read on.
+ */
+async function fetchWithTimeout(url: string, init: RequestInit, signal?: AbortSignal) {
+  const controller = new AbortController();
+  const timedOut = { value: false };
+
+  const timer = setTimeout(() => {
+    timedOut.value = true;
+    controller.abort();
+  }, REQUEST_TIMEOUT_MS);
+
+  const relay = () => controller.abort();
+  signal?.addEventListener("abort", relay);
+
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (cause) {
+    // Our own deadline, not the caller unmounting: report it as a timeout.
+    if (timedOut.value) throw new DOMException("Request timed out", "TimeoutError");
+    throw cause;
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", relay);
+  }
+}
+
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = "GET", body, auth = true, signal } = options;
 
@@ -62,16 +102,35 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   let response: Response;
   try {
-    response = await fetch(`${BASE_URL}${path}`, {
-      method,
-      headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+    response = await fetchWithTimeout(
+      `${BASE_URL}${path}`,
+      {
+        method,
+        headers,
+        body: body === undefined ? undefined : JSON.stringify(body),
+      },
       signal,
-    });
+    );
   } catch (cause) {
+    // The caller went away (component unmounted) — not an error worth showing.
     if (cause instanceof DOMException && cause.name === "AbortError") throw cause;
+
+    if (cause instanceof DOMException && cause.name === "TimeoutError") {
+      throw new ApiError(
+        IS_REMOTE_API
+          ? "The server is taking longer than usual to respond. It sleeps when idle and can need up to a minute to wake up — please try again."
+          : `The server at ${BASE_URL} did not respond in time.`,
+        0,
+      );
+    }
+
+    // Everything else: genuinely could not open a connection. On a phone this is
+    // usually the network changing (wifi to data) or the tab being backgrounded
+    // mid-request, so say that rather than blaming the server outright.
     throw new ApiError(
-      `Could not reach the server at ${BASE_URL}. Is the Spring Boot backend running?`,
+      IS_REMOTE_API
+        ? "Could not reach the server. Check your connection and try again — if you just opened the site, it may still be waking up."
+        : `Could not reach the server at ${BASE_URL}. Is the Spring Boot backend running?`,
       0,
     );
   }

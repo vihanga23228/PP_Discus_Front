@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { api } from "../lib/api";
+import { api, IS_REMOTE_API } from "../lib/api";
 import type { Subject } from "../lib/types";
 
 function Skeleton() {
@@ -48,13 +48,23 @@ export default function SubjectCatalogue() {
       <div className="rounded-2xl border border-amber/30 bg-amber-wash/60 p-6">
         <p className="font-serif text-lg font-semibold text-ink">The subject list is unavailable</p>
         <p className="mt-2 text-sm leading-6 text-ink-soft">{error}</p>
-        <p className="mt-4 text-sm text-ink-soft">
-          If you are running this locally, start the API with{" "}
-          <code className="rounded bg-card px-1.5 py-0.5 font-mono text-[13px] text-teal-deep">
-            .\gradlew.bat bootRun
-          </code>{" "}
-          inside <span className="font-mono text-[13px]">pp_backen</span>.
-        </p>
+        {IS_REMOTE_API ? (
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="mt-4 rounded-full bg-teal-deep px-5 py-2 text-sm font-semibold text-paper transition hover:bg-teal"
+          >
+            Try again
+          </button>
+        ) : (
+          <p className="mt-4 text-sm text-ink-soft">
+            If you are running this locally, start the API with{" "}
+            <code className="rounded bg-card px-1.5 py-0.5 font-mono text-[13px] text-teal-deep">
+              .\gradlew.bat bootRun
+            </code>{" "}
+            inside <span className="font-mono text-[13px]">pp_backen</span>.
+          </p>
+        )}
       </div>
     );
   }
