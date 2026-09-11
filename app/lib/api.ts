@@ -247,6 +247,35 @@ export const api = {
     deleteUser: (id: number) =>
       request<void>(`/api/admin/users/${id}`, { method: "DELETE" }),
 
+    /**
+     * Edits one published question. Options carry their ids so the server keeps
+     * the existing rows, leaving answers students already recorded untouched.
+     */
+    updateQuestion: (
+      id: number,
+      body: {
+        type: string;
+        stem: string;
+        stemSi: string | null;
+        note: string | null;
+        noteSi: string | null;
+        explanation: string | null;
+        explanationSi: string | null;
+        imageUrl: string | null;
+        paperId: number;
+        options: {
+          id?: number;
+          label: string;
+          text: string;
+          textSi: string | null;
+          imageUrl: string | null;
+          correct: boolean;
+          explanationEn: string | null;
+          explanationSi: string | null;
+        }[];
+      },
+    ) => request<Question>(`/api/questions/${id}`, { method: "PUT", body }),
+
     importPaper: (body: {
       subjectId?: number;
       newSubjectName?: string;

@@ -519,6 +519,12 @@ export default function AdminCataloguePage() {
                                 >
                                   View
                                 </Link>
+                                <Link
+                                  href={`/admin/papers/${paper.id}/edit?examId=${exam.id}`}
+                                  className="rounded-lg border border-teal/40 bg-teal-wash px-2.5 py-1 text-xs font-semibold text-teal-deep transition hover:border-teal hover:bg-teal hover:text-white"
+                                >
+                                  Edit questions
+                                </Link>
                                 <button
                                   type="button"
                                   onClick={() =>

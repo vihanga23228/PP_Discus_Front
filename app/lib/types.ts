@@ -209,6 +209,12 @@ export interface DraftQuestion {
   exp_si?: string | null;
   image?: string | null;
   options: {
+    /**
+     * Set when editing an already-published paper. Sending it back lets the
+     * server update that row rather than replace it, which keeps the recorded
+     * answers pointing at it intact. Absent for a freshly extracted draft.
+     */
+    id?: number;
     L: string;
     text: string;
     text_si: string | null;
