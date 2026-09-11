@@ -201,6 +201,12 @@ export interface DraftQuestion {
   stem: string;
   stem_si: string | null;
   type: string;
+  /** Provenance line shown under the stem, e.g. which PDF it came from. */
+  note?: string | null;
+  note_si?: string | null;
+  /** Why the answer is what it is — the discussion the whole app exists for. */
+  exp?: string | null;
+  exp_si?: string | null;
   image?: string | null;
   options: {
     L: string;
@@ -208,6 +214,9 @@ export interface DraftQuestion {
     text_si: string | null;
     image?: string | null;
     correct: boolean;
+    /** Per-option reasoning. For a true/false question this is what a student reads. */
+    exp?: string | null;
+    exp_si?: string | null;
   }[];
   confidence?: string;
   optionsAreFigures?: boolean;
