@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { ApiError, api } from "../lib/api";
 import type { DraftQuestion } from "../lib/types";
 
 const MEDIA_BASE = (process.env.NEXT_PUBLIC_API_URL?.trim() || "http://localhost:8083").replace(/\/+$/, "");
@@ -18,6 +19,85 @@ const areaClass =
 
 /** Blank inputs should clear the field rather than store an empty string. */
 const orNull = (v: string) => (v.trim() ? v : null);
+
+/**
+ * Attaches a diagram to a question. Diagrams are no longer cropped out of the
+ * PDF automatically — an auto-crop guessed the bounds and often clipped an axis
+ * label, so the screenshot is taken by hand instead.
+ */
+function FigureUpload({
+  image,
+  onChange,
+}: {
+  image: string | null | undefined;
+  onChange: (url: string | null) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function upload(file: File | undefined) {
+    if (!file) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const { url } = await api.admin.uploadImage(file);
+      onChange(url);
+    } catch (cause) {
+      setError(cause instanceof ApiError ? cause.message : "Upload failed.");
+    } finally {
+      setBusy(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  return (
+    <div className="mt-2 rounded-lg border border-dashed border-rule bg-paper/40 p-2">
+      {image ? (
+        <div className="flex items-start gap-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={mediaUrl(image)!}
+            alt="Question figure"
+            className="max-h-40 flex-1 rounded border border-rule bg-white object-contain"
+          />
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            title="Remove this figure"
+            className="flex-none rounded px-1.5 text-ink-faint hover:bg-verdict-false hover:text-verdict-false-ink"
+          >
+            ✕
+          </button>
+        </div>
+      ) : (
+        <p className="text-[11px] text-ink-faint">No figure attached.</p>
+      )}
+
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => fileRef.current?.click()}
+          className="rounded-full border border-rule bg-card px-3 py-1 text-[12px] font-semibold text-teal-deep transition hover:border-teal hover:bg-teal-wash disabled:opacity-50"
+        >
+          {busy ? "Uploading…" : image ? "Replace screenshot" : "Upload screenshot"}
+        </button>
+        <span className="text-[11px] text-ink-faint">PNG, JPEG or WebP, up to 5 MB</span>
+      </div>
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif"
+        onChange={(e) => void upload(e.target.files?.[0])}
+        className="hidden"
+      />
+
+      {error && <p className="mt-1 text-[11px] text-verdict-false-ink">{error}</p>}
+    </div>
+  );
+}
 
 export function QuestionRow({
   q,
@@ -165,14 +245,7 @@ export function QuestionRow({
         className="sinhala-note mt-1.5 w-full rounded-lg border border-rule bg-paper/60 px-3 py-2 text-sm outline-none focus:border-teal focus:bg-card"
       />
 
-      {mediaUrl(q.image) && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={mediaUrl(q.image)!}
-          alt={`Figure for question ${q.number}`}
-          className="mt-2 max-h-52 rounded-lg border border-rule bg-white object-contain"
-        />
-      )}
+      <FigureUpload image={q.image} onChange={(url) => onChange({ ...q, image: url })} />
 
       <ul className="mt-3 space-y-2">
         {q.options.map((o, i) => (

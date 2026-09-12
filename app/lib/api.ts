@@ -248,6 +248,27 @@ export const api = {
       request<void>(`/api/admin/users/${id}`, { method: "DELETE" }),
 
     /**
+     * Uploads a question screenshot and returns the URL to store on the question.
+     * Held in the database, not on the host's disk, which is wiped on redeploy.
+     */
+    uploadImage: async (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      const token = typeof window === "undefined" ? null : window.localStorage.getItem(TOKEN_KEY);
+      const response = await fetch(`${BASE_URL}/api/admin/media`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: form,
+      });
+      const raw = await response.text();
+      const payload = raw ? (JSON.parse(raw) as { url?: string; message?: string }) : null;
+      if (!response.ok) {
+        throw new ApiError(payload?.message ?? "That image could not be uploaded.", response.status);
+      }
+      return payload as { url: string };
+    },
+
+    /**
      * Edits one published question. Options carry their ids so the server keeps
      * the existing rows, leaving answers students already recorded untouched.
      */
