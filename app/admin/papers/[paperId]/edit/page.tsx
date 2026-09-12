@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { ApiError, api } from "../../../../lib/api";
-import type { DraftQuestion, Question } from "../../../../lib/types";
+import type { DraftQuestion, PaperReview, Question } from "../../../../lib/types";
 import { QuestionRow } from "../../../../components/QuestionEditor";
 
 /**
@@ -70,6 +70,7 @@ export default function EditPaperQuestionsPage() {
 
   const [original, setOriginal] = useState<Question[] | null>(null);
   const [drafts, setDrafts] = useState<DraftQuestion[]>([]);
+  const [review, setReview] = useState<PaperReview | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
@@ -87,6 +88,11 @@ export default function EditPaperQuestionsPage() {
         if (controller.signal.aborted) return;
         setError(cause instanceof Error ? cause.message : "Could not load this paper.");
       });
+    // A missing summary is not worth blocking the editor over.
+    api.admin
+      .paperReview(paperId, controller.signal)
+      .then((r) => !controller.signal.aborted && setReview(r))
+      .catch(() => {});
     return () => controller.abort();
   }, [paperId]);
 
@@ -110,6 +116,8 @@ export default function EditPaperQuestionsPage() {
       const fresh = await api.questionsByPaper(paperId);
       setOriginal(fresh);
       setDrafts(fresh.map(toDraft));
+      // Re-ask the server what still needs attention now the edits have landed.
+      await api.admin.paperReview(paperId).then(setReview).catch(() => {});
       setSaved(
         dirty.length === 0
           ? "Nothing had changed."
@@ -173,6 +181,41 @@ export default function EditPaperQuestionsPage() {
         </div>
       )}
 
+      {review && review.needsAttention > 0 && (
+        <div className="rounded-2xl border border-amber/40 bg-amber-wash/50 p-5">
+          <p className="font-serif text-lg font-semibold text-ink">
+            {review.needsAttention} of {review.questionCount} questions need attention
+          </p>
+          <p className="mt-1 text-xs text-ink-soft">
+            Jump to a question by its number. This list is from the server, so it reflects what is
+            published rather than what is on screen — save and reload to refresh it.
+          </p>
+          <ul className="mt-3 space-y-1.5">
+            {review.questions.map((f) => (
+              <li key={f.questionId} className="flex flex-wrap items-baseline gap-2 text-sm">
+                <a
+                  href={`#q${f.number}`}
+                  className="rounded bg-teal-deep px-1.5 py-0.5 text-[11px] font-bold text-white"
+                >
+                  Q{f.number}
+                </a>
+                <span className="font-semibold text-verdict-false-ink">
+                  {f.reasons.join(" · ")}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-xs text-ink-faint">{f.preview}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {review && review.needsAttention === 0 && (
+        <div className="rounded-2xl border border-verdict-true-ink/25 bg-verdict-true px-5 py-3 text-sm text-verdict-true-ink">
+          All {review.questionCount} questions look complete — every one has an answer marked and
+          text in both languages.
+        </div>
+      )}
+
       {original && (
         <>
           <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rule bg-card/95 px-5 py-3 shadow-paper backdrop-blur">
@@ -191,8 +234,8 @@ export default function EditPaperQuestionsPage() {
 
           <div className="space-y-3">
             {drafts.map((q, i) => (
+              <div key={original[i]?.id ?? `new-${i}`} id={`q${i + 1}`} className="scroll-mt-24">
               <QuestionRow
-                key={original[i]?.id ?? `new-${i}`}
                 q={q}
                 position={i + 1}
                 isFirst
@@ -208,6 +251,7 @@ export default function EditPaperQuestionsPage() {
                 onMove={() => {}}
                 readOnlyStructure
               />
+              </div>
             ))}
           </div>
         </>

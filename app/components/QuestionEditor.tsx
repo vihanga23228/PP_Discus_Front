@@ -245,6 +245,47 @@ export function QuestionRow({
         className="sinhala-note mt-1.5 w-full rounded-lg border border-rule bg-paper/60 px-3 py-2 text-sm outline-none focus:border-teal focus:bg-card"
       />
 
+      {/*
+        The circle beside each option toggles it too, but that is easy to miss —
+        it reads as a bullet rather than a control. This is the same action stated
+        plainly, and it is the one field that decides whether a student can score
+        the question at all.
+      */}
+      <div
+        className={`mt-3 flex flex-wrap items-center gap-2 rounded-lg px-3 py-2 ${
+          correct.length ? "bg-teal-wash" : "bg-verdict-false"
+        }`}
+      >
+        <span
+          className={`text-[12px] font-semibold ${
+            correct.length ? "text-teal-deep" : "text-verdict-false-ink"
+          }`}
+        >
+          {manyCorrect ? "Correct answers" : "Correct answer"}
+        </span>
+        {q.options.map((o, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => toggleCorrect(i)}
+            className={`h-7 min-w-7 px-1.5 text-[12px] font-bold transition ${
+              manyCorrect ? "rounded" : "rounded-full"
+            } ${
+              o.correct
+                ? "bg-teal-deep text-white"
+                : "border border-rule bg-card text-ink-soft hover:border-teal hover:text-teal-deep"
+            }`}
+          >
+            {o.L}
+          </button>
+        ))}
+        {!correct.length && (
+          <span className="text-[11px] text-verdict-false-ink">
+            {manyCorrect ? "nothing marked yet" : "none set — this question cannot be scored"}
+          </span>
+        )}
+      </div>
+
       <FigureUpload image={q.image} onChange={(url) => onChange({ ...q, image: url })} />
 
       <ul className="mt-3 space-y-2">

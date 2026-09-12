@@ -159,6 +159,22 @@ export interface Paged<T> {
 }
 
 /** One question in an uploaded paper file. Matches the seed JSON shape. */
+/** Which questions in a paper still need a person to fix them, and why. */
+export interface PaperReview {
+  paperId: number;
+  paperTitle: string;
+  questionCount: number;
+  needsAttention: number;
+  questions: {
+    questionId: number;
+    /** Position in the paper, 1-based — what the editor shows as "Q7". */
+    number: number;
+    type: string;
+    preview: string;
+    reasons: string[];
+  }[];
+}
+
 export interface ImportQuestion {
   type?: string;
   stem?: string;

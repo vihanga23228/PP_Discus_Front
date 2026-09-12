@@ -9,6 +9,7 @@ import type {
   Paged,
   ExtractionJob,
   Paper,
+  PaperReview,
   Question,
   Subject,
   QuizAttemptSummary,
@@ -246,6 +247,10 @@ export const api = {
 
     deleteUser: (id: number) =>
       request<void>(`/api/admin/users/${id}`, { method: "DELETE" }),
+
+    /** Which question numbers in this paper still need manual attention. */
+    paperReview: (paperId: number, signal?: AbortSignal) =>
+      request<PaperReview>(`/api/admin/papers/${paperId}/review`, { signal }),
 
     /**
      * Uploads a question screenshot and returns the URL to store on the question.
