@@ -342,6 +342,27 @@ export const api = {
       return { jobId: payload?.jobId ?? "" };
     },
 
+    /**
+     * Uploads a marking scheme. Poll with extractionStatus — the finished job
+     * carries `answers` rather than `questions`.
+     */
+    extractAnswers: async (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      const token = typeof window === "undefined" ? null : window.localStorage.getItem(TOKEN_KEY);
+      const response = await fetch(`${BASE_URL}/api/admin/papers/extract-answers`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: form,
+      });
+      const raw = await response.text();
+      const payload = raw ? (JSON.parse(raw) as { jobId?: string; message?: string }) : null;
+      if (!response.ok) {
+        throw new ApiError(payload?.message ?? "That marking scheme could not be read.", response.status);
+      }
+      return payload as { jobId: string };
+    },
+
     extractionStatus: (jobId: string, signal?: AbortSignal) =>
       request<ExtractionJob>(`/api/admin/papers/extract/${jobId}`, { signal }),
 

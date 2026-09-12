@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, api } from "../../lib/api";
-import type { DraftQuestion, Exam, ExtractionJob, ImportPaperResult, Subject } from "../../lib/types";
+import type {
+  DraftQuestion,
+  Exam,
+  ExtractedAnswer,
+  ExtractionJob,
+  ImportPaperResult,
+  Subject,
+} from "../../lib/types";
 import { QuestionRow, mediaUrl } from "../../components/QuestionEditor";
 
 const NEW = "__new__";
@@ -26,6 +33,9 @@ export default function AdminPdfImportPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [answerKey, setAnswerKey] = useState("");
+  const keyFileRef = useRef<HTMLInputElement>(null);
+  const [keyBusy, setKeyBusy] = useState(false);
+  const [keyNote, setKeyNote] = useState<string | null>(null);
   const [subjectPick, setSubjectPick] = useState("");
   const [newSubjectName, setNewSubjectName] = useState("");
   const [examPick, setExamPick] = useState("");
@@ -101,6 +111,92 @@ export default function AdminPdfImportPage() {
       setError(cause instanceof ApiError ? cause.message : "That PDF could not be uploaded.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  /**
+   * Attaches an extracted marking scheme to the draft: marks the correct option
+   * and copies the reasoning onto the matching question.
+   *
+   * Matched on the question number the scheme prints, not on position, because a
+   * scheme often covers a different range than the pages that were extracted.
+   */
+  const applyAnswerKey = useCallback((entries: ExtractedAnswer[]) => {
+    const byNumber = new Map(entries.map((a) => [a.number, a]));
+    let matched = 0;
+    let withReasoning = 0;
+    const unmatchedLabels: string[] = [];
+
+    setDrafts((current) =>
+      current.map((q) => {
+        const key = byNumber.get(q.number);
+        if (!key) return q;
+        matched++;
+
+        // Labels are printed inconsistently — "3", "(3)", "C", "c" all occur.
+        const wanted = key.answers.map((a) => a.replace(/[()\s.]/g, "").toLowerCase());
+        const options = q.options.map((o) => ({
+          ...o,
+          correct: wanted.includes(o.L.replace(/[()\s.]/g, "").toLowerCase()),
+        }));
+
+        if (wanted.length > 0 && !options.some((o) => o.correct)) {
+          unmatchedLabels.push(`Q${q.number}: "${key.answers.join(", ")}"`);
+        }
+        if (key.exp || key.exp_si) withReasoning++;
+
+        return {
+          ...q,
+          options,
+          // Only fill a blank — never overwrite reasoning already typed by hand.
+          exp: q.exp ?? key.exp,
+          exp_si: q.exp_si ?? key.exp_si,
+        };
+      }),
+    );
+
+    const bits = [`${matched} of ${entries.length} answers matched a question`];
+    if (withReasoning) bits.push(`${withReasoning} brought an explanation`);
+    if (unmatchedLabels.length) {
+      bits.push(
+        `no option matched the printed answer for ${unmatchedLabels.length}: ${unmatchedLabels
+          .slice(0, 5)
+          .join(", ")}`,
+      );
+    }
+    setKeyNote(bits.join(" · "));
+  }, []);
+
+  async function uploadAnswerKey(file: File | undefined) {
+    if (!file) return;
+    setKeyBusy(true);
+    setKeyNote(null);
+    setError(null);
+    try {
+      const { jobId } = await api.admin.extractAnswers(file);
+
+      // Same polling shape as the paper extraction, but this job is short.
+      for (let tick = 0; tick < 150; tick++) {
+        await new Promise((r) => setTimeout(r, 2500));
+        const job = await api.admin.extractionStatus(jobId);
+        setKeyNote(job.message);
+        if (job.status === "DONE") {
+          applyAnswerKey(job.answers ?? []);
+          return;
+        }
+        if (job.status === "FAILED") {
+          setError(job.errors.join(" ") || "The marking scheme could not be read.");
+          setKeyNote(null);
+          return;
+        }
+      }
+      setKeyNote("Still working — reload and check again shortly.");
+    } catch (cause) {
+      setError(cause instanceof ApiError ? cause.message : "That marking scheme could not be read.");
+      setKeyNote(null);
+    } finally {
+      setKeyBusy(false);
+      if (keyFileRef.current) keyFileRef.current.value = "";
     }
   }
 
@@ -352,6 +448,44 @@ export default function AdminPdfImportPage() {
                   ? "Every question has an answer."
                   : `${unanswered} of ${drafts.length} questions still have no answer.`}
               </p>
+
+              {/*
+                The paste box only carries answers. A real marking scheme also
+                prints the reasoning, which is the part students actually come
+                for, so it can be uploaded and attached question by question.
+              */}
+              <div className="mt-4 border-t border-rule pt-4">
+                <label className="text-sm font-semibold text-ink">
+                  …or upload the answer sheet
+                </label>
+                <p className="mt-1 text-xs text-ink-soft">
+                  Reads the correct answer <em>and</em> the printed explanation for each question,
+                  and attaches them by question number. Existing explanations are left alone.
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={keyBusy || vision === false}
+                    onClick={() => keyFileRef.current?.click()}
+                    className="rounded-lg border border-teal/40 bg-teal-wash px-4 py-2 text-sm font-semibold text-teal-deep transition hover:border-teal hover:bg-teal hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {keyBusy ? "Reading…" : "Upload marking scheme PDF"}
+                  </button>
+                  {vision === false && (
+                    <span className="text-xs text-ink-faint">
+                      Needs a vision API key — paste the answers above instead.
+                    </span>
+                  )}
+                </div>
+                <input
+                  ref={keyFileRef}
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  className="hidden"
+                  onChange={(e) => void uploadAnswerKey(e.target.files?.[0])}
+                />
+                {keyNote && <p className="mt-2 text-xs text-teal-deep">{keyNote}</p>}
+              </div>
             </div>
           </div>
 

@@ -246,6 +246,14 @@ export interface DraftQuestion {
   sourcePage?: number | null;
 }
 
+export interface ExtractedAnswer {
+  number: number;
+  answers: string[];
+  exp: string | null;
+  exp_si: string | null;
+  confidence?: string;
+}
+
 export interface ExtractionJob {
   jobId: string;
   status: ExtractionStatus;
@@ -257,6 +265,8 @@ export interface ExtractionJob {
   mock: boolean;
   pageImages: string[];
   questions: DraftQuestion[];
+  /** Set instead of `questions` when the upload was a marking scheme. */
+  answers: ExtractedAnswer[] | null;
   errors: string[];
   warnings: string[];
   needsReview: number[];
