@@ -211,8 +211,8 @@ export default function EditPaperQuestionsPage() {
 
       {review && review.needsAttention === 0 && (
         <div className="rounded-2xl border border-verdict-true-ink/25 bg-verdict-true px-5 py-3 text-sm text-verdict-true-ink">
-          All {review.questionCount} questions look complete — every one has an answer marked and
-          text in both languages.
+          All {review.questionCount} questions look complete — nothing missing an answer, an
+          option, or a figure.
         </div>
       )}
 
