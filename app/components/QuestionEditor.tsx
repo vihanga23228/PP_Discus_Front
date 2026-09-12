@@ -35,6 +35,16 @@ function FigureUpload({
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [broken, setBroken] = useState(false);
+
+  /**
+   * Figures the old importer cropped were written to the host's disk, which a
+   * redeploy wipes — every one of them now 404s. Recognising the path means the
+   * editor states that plainly instead of firing fifty doomed requests and
+   * showing a row of broken-image icons.
+   */
+  const lostToRedeploy = !!image && image.startsWith("/api/media/job-");
+  const missing = lostToRedeploy || broken;
 
   async function upload(file: File | undefined) {
     if (!file) return;
@@ -53,12 +63,27 @@ function FigureUpload({
 
   return (
     <div className="mt-2 rounded-lg border border-dashed border-rule bg-paper/40 p-2">
-      {image ? (
+      {image && missing ? (
+        <div className="flex items-start justify-between gap-2 rounded bg-amber-wash px-2 py-1.5">
+          <span className="text-[11px] font-semibold text-amber">
+            This figure is missing — it was lost when the server redeployed. Upload a replacement.
+          </span>
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            title="Clear the dead link"
+            className="flex-none rounded px-1.5 text-ink-faint hover:bg-verdict-false hover:text-verdict-false-ink"
+          >
+            ✕
+          </button>
+        </div>
+      ) : image ? (
         <div className="flex items-start gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={mediaUrl(image)!}
             alt="Question figure"
+            onError={() => setBroken(true)}
             className="max-h-40 flex-1 rounded border border-rule bg-white object-contain"
           />
           <button
@@ -78,10 +103,19 @@ function FigureUpload({
         <button
           type="button"
           disabled={busy}
-          onClick={() => fileRef.current?.click()}
+          onClick={() => {
+            setBroken(false);
+            fileRef.current?.click();
+          }}
           className="rounded-full border border-rule bg-card px-3 py-1 text-[12px] font-semibold text-teal-deep transition hover:border-teal hover:bg-teal-wash disabled:opacity-50"
         >
-          {busy ? "Uploading…" : image ? "Replace screenshot" : "Upload screenshot"}
+          {busy
+            ? "Uploading…"
+            : missing
+              ? "Upload replacement"
+              : image
+                ? "Replace screenshot"
+                : "Upload screenshot"}
         </button>
         <span className="text-[11px] text-ink-faint">PNG, JPEG or WebP, up to 5 MB</span>
       </div>
