@@ -19,7 +19,12 @@ const NEW = "__new__";
 
 export default function AdminPdfImportPage() {
   const [vision, setVision] = useState<boolean | null>(null);
-  const [quotaResetsAt, setQuotaResetsAt] = useState<string | null>(null);
+  const [quota, setQuota] = useState<{
+    exhausted: boolean;
+    resetsAt: string | null;
+    used: number;
+    limit: number | null;
+  } | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
 
@@ -54,7 +59,7 @@ export default function AdminPdfImportPage() {
       .then(([caps, s, e]) => {
         if (controller.signal.aborted) return;
         setVision(caps.vision);
-        setQuotaResetsAt(caps.quotaExhausted ? caps.quotaResetsAt : null);
+        setQuota({ exhausted: caps.quotaExhausted, resetsAt: caps.quotaResetsAt, used: caps.requestsToday, limit: caps.dailyLimit });
         // Nothing to extract with, so start in the mode that still works.
         setUseSample(!caps.vision || caps.quotaExhausted);
         setSubjects(s);
@@ -70,7 +75,7 @@ export default function AdminPdfImportPage() {
   const refreshQuota = useCallback(async () => {
     try {
       const caps = await api.admin.importCapabilities();
-      setQuotaResetsAt(caps.quotaExhausted ? caps.quotaResetsAt : null);
+      setQuota({ exhausted: caps.quotaExhausted, resetsAt: caps.quotaResetsAt, used: caps.requestsToday, limit: caps.dailyLimit });
       if (caps.quotaExhausted) setUseSample(true);
     } catch {
       // The banner is a courtesy; the job's own error already said what happened.
@@ -284,31 +289,60 @@ export default function AdminPdfImportPage() {
         while, and finding out at the end that not one page could be read is a
         waste of everybody's time.
       */}
-      {quotaResetsAt && (
+      {quota && vision && (
         <div
-          role="alert"
-          className="rounded-2xl border border-amber/40 bg-amber-wash/60 p-5"
+          role={quota.exhausted ? "alert" : undefined}
+          className={`rounded-2xl border p-5 ${
+            quota.exhausted
+              ? "border-amber/40 bg-amber-wash/60"
+              : "border-rule bg-card shadow-paper"
+          }`}
         >
-          <p className="font-serif text-lg font-semibold text-ink">
-            The vision model&rsquo;s daily quota is used up
-          </p>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="font-serif text-lg font-semibold text-ink">
+              {quota.exhausted
+                ? "The vision model’s daily quota is used up"
+                : "Vision quota"}
+            </p>
+            <p className="text-sm font-semibold text-ink-soft">
+              {quota.used} request{quota.used === 1 ? "" : "s"} from this server today
+              {quota.limit ? ` · cap ${quota.limit}` : ""}
+            </p>
+          </div>
+
+          {/*
+            The count is deliberately described as "from this server". It cannot be
+            the whole picture: the same key is used from the developer's machine,
+            and the tally restarts whenever the free instance wakes from sleep. A
+            number presented as authoritative would be wrong more often than right.
+          */}
           <p className="mt-1.5 text-sm text-ink-soft">
-            The free tier allows 20 requests a day and each page costs one, shared across
-            everywhere this API key is used. It resets{" "}
-            <strong>
-              {new Date(quotaResetsAt).toLocaleString(undefined, {
-                weekday: "short",
-                hour: "numeric",
-                minute: "2-digit",
-              })}
-            </strong>{" "}
-            (midnight Pacific).
+            Each page of a PDF costs one request, and the allowance is shared by every machine
+            using this API key — the free tier gives 20 a day. Runs from your own computer count
+            against it too but are not included above.
+            {quota.resetsAt && (
+              <>
+                {" "}
+                It resets{" "}
+                <strong>
+                  {new Date(quota.resetsAt).toLocaleString(undefined, {
+                    weekday: "short",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
+                </strong>{" "}
+                (midnight Pacific).
+              </>
+            )}
           </p>
-          <p className="mt-2 text-sm text-ink-soft">
-            Reading a marking scheme is unavailable until then too. You can still tick{" "}
-            <em>use sample data</em> below to try the review and publish flow, edit papers you
-            have already imported, or add billing to the key to lift the cap.
-          </p>
+
+          {quota.exhausted && (
+            <p className="mt-2 text-sm text-ink-soft">
+              Reading a marking scheme is unavailable until then too. You can still tick{" "}
+              <em>use sample data</em> below to try the review and publish flow, edit papers you
+              have already imported, or add billing to the key to lift the cap.
+            </p>
+          )}
         </div>
       )}
 
@@ -530,15 +564,15 @@ export default function AdminPdfImportPage() {
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <button
                     type="button"
-                    disabled={keyBusy || vision === false || !!quotaResetsAt}
+                    disabled={keyBusy || vision === false || !!quota?.exhausted}
                     onClick={() => keyFileRef.current?.click()}
                     className="rounded-lg border border-teal/40 bg-teal-wash px-4 py-2 text-sm font-semibold text-teal-deep transition hover:border-teal hover:bg-teal hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {keyBusy ? "Reading…" : "Upload marking scheme (PDF or image)"}
                   </button>
-                  {(vision === false || quotaResetsAt) && (
+                  {(vision === false || quota?.exhausted) && (
                     <span className="text-xs text-ink-faint">
-                      {quotaResetsAt
+                      {quota?.exhausted
                         ? "Daily quota used up — paste the answers above instead."
                         : "Needs a vision API key — paste the answers above instead."}
                     </span>

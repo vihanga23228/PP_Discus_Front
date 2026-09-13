@@ -319,10 +319,14 @@ export const api = {
     // --- PDF extraction ---
     /** `quotaExhausted` is true once the model's daily allowance is spent. */
     importCapabilities: (signal?: AbortSignal) =>
-      request<{ vision: boolean; quotaExhausted: boolean; quotaResetsAt: string | null }>(
-        "/api/admin/import/capabilities",
-        { signal },
-      ),
+      request<{
+        vision: boolean;
+        quotaExhausted: boolean;
+        quotaResetsAt: string | null;
+        requestsToday: number;
+        /** Null until a rejection reveals the cap. */
+        dailyLimit: number | null;
+      }>("/api/admin/import/capabilities", { signal }),
 
     /** Uploads the PDF and returns the id of the background extraction job. */
     extractPdf: async (file: File, mock: boolean) => {
