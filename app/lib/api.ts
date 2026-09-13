@@ -317,8 +317,12 @@ export const api = {
     }) => request<ImportPaperResult>("/api/admin/papers/import", { method: "POST", body }),
 
     // --- PDF extraction ---
+    /** `quotaExhausted` is true once the model's daily allowance is spent. */
     importCapabilities: (signal?: AbortSignal) =>
-      request<{ vision: boolean }>("/api/admin/import/capabilities", { signal }),
+      request<{ vision: boolean; quotaExhausted: boolean; quotaResetsAt: string | null }>(
+        "/api/admin/import/capabilities",
+        { signal },
+      ),
 
     /** Uploads the PDF and returns the id of the background extraction job. */
     extractPdf: async (file: File, mock: boolean) => {
