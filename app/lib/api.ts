@@ -363,6 +363,10 @@ export const api = {
       return payload as { jobId: string };
     },
 
+    /** Stops a running extraction before it spends more of the daily quota. */
+    cancelExtraction: (jobId: string) =>
+      request<void>(`/api/admin/papers/extract/${jobId}/cancel`, { method: "POST" }),
+
     extractionStatus: (jobId: string, signal?: AbortSignal) =>
       request<ExtractionJob>(`/api/admin/papers/extract/${jobId}`, { signal }),
 

@@ -108,7 +108,7 @@ export default function AdminPdfImportPage() {
         if (!title) setTitle(`${yearMatch[0]} Paper`);
       }
     } catch (cause) {
-      setError(cause instanceof ApiError ? cause.message : "That PDF could not be uploaded.");
+      setError(cause instanceof ApiError ? cause.message : "That file could not be uploaded.");
     } finally {
       setBusy(false);
     }
@@ -323,7 +323,7 @@ export default function AdminPdfImportPage() {
             ref={fileRef}
             id="pdf-file"
             type="file"
-            accept="application/pdf,.pdf"
+            accept="application/pdf,.pdf,image/png,image/jpeg,image/webp"
             className="sr-only"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
@@ -367,8 +367,25 @@ export default function AdminPdfImportPage() {
               }}
             />
           </div>
-          <p className="mt-2 text-xs text-ink-faint">
-            {job.fileName} · {job.model}
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs text-ink-faint">
+              {job.fileName} · {job.model}
+              {job.pagesTotal > 0 && ` · page ${job.pagesDone} of ${job.pagesTotal}`}
+            </p>
+            {/*
+              Each page costs one call from a small daily allowance, so being able
+              to stop a run you started by mistake is worth more than it looks.
+            */}
+            <button
+              type="button"
+              onClick={() => void api.admin.cancelExtraction(job.jobId).catch(() => {})}
+              className="rounded-full border border-verdict-false-ink/30 px-4 py-1.5 text-xs font-semibold text-verdict-false-ink transition hover:bg-verdict-false"
+            >
+              Stop
+            </button>
+          </div>
+          <p className="mt-1 text-[11px] text-ink-faint">
+            Stopping finishes the page being read and keeps whatever came back.
           </p>
         </div>
       )}
@@ -469,7 +486,7 @@ export default function AdminPdfImportPage() {
                     onClick={() => keyFileRef.current?.click()}
                     className="rounded-lg border border-teal/40 bg-teal-wash px-4 py-2 text-sm font-semibold text-teal-deep transition hover:border-teal hover:bg-teal hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {keyBusy ? "Reading…" : "Upload marking scheme PDF"}
+                    {keyBusy ? "Reading…" : "Upload marking scheme (PDF or image)"}
                   </button>
                   {vision === false && (
                     <span className="text-xs text-ink-faint">
@@ -480,7 +497,7 @@ export default function AdminPdfImportPage() {
                 <input
                   ref={keyFileRef}
                   type="file"
-                  accept="application/pdf,.pdf"
+                  accept="application/pdf,.pdf,image/png,image/jpeg,image/webp"
                   className="hidden"
                   onChange={(e) => void uploadAnswerKey(e.target.files?.[0])}
                 />
